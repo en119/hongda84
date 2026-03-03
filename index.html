@@ -11,15 +11,14 @@
         .balance-board { background: #333; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .balance-amount { font-size: 32px; font-weight: bold; margin: 5px 0; color: #f1c40f; }
         .init-section { background: #fff9db; padding: 12px; border: 1px solid #f1c40f; border-radius: 10px; margin-bottom: 15px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
-        .init-section input { width: 110px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; text-align: right; font-size: 16px; font-weight: bold; }
+        .init-section input { width: 110px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; text-align: right; font-size: 16px; font-weight: bold; background: #fff; }
         .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #f9f2ff; padding: 10px; border-radius: 10px; }
         .full-width { grid-column: span 2; }
         input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 5px; }
-        button { padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        button { padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
         .btn-income { background: var(--income); }
         .btn-expense { background: var(--expense); }
-        /* 清除鍵樣式 */
-        .btn-clear { background: #ff4d4d; font-size: 12px; padding: 5px 10px; border-radius: 5px; width: auto; } 
+        .btn-clear { background: #ff4d4d; font-size: 12px; padding: 5px 12px; border-radius: 6px; }
         .sync-status { text-align: center; font-size: 10px; color: #999; margin-bottom: 10px; }
         .history { height: 350px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 10px; }
         .item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f9f9f9; align-items: center; }
@@ -35,9 +34,9 @@
     </div>
 
     <div class="init-section">
-        <strong>💰 本週起始金額：</strong>
+        <strong>💰 雲端起始金額：</strong>
         <div>
-            <input type="number" id="startBalance" value="0" onchange="refreshUI()" inputmode="decimal">
+            <input type="number" id="startBalance" readonly style="background:#eee; border:none;">
             <span style="font-weight:bold;"> 元</span>
         </div>
     </div>
@@ -52,8 +51,8 @@
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <strong style="font-size:14px;">最近雲端紀錄</strong>
         <div>
-            <button class="btn-clear" onclick="clearCloudData()">🗑️ 清除紀錄</button>
-            <button onclick="fetchCloudData()" style="background:none; color:var(--primary); font-size:12px; width:auto; padding:0; text-decoration:underline; margin-left:10px;">🔄 手動整理</button>
+            <button class="btn-clear" onclick="clearCloudData()">🗑️ 一鍵結算</button>
+            <button onclick="fetchCloudData()" style="background:none; color:var(--primary); font-size:12px; width:auto; padding:0; text-decoration:underline; margin-left:10px;">🔄 重整</button>
         </div>
     </div>
     <div id="historyList" class="history"></div>
@@ -61,18 +60,22 @@
 
 <script>
     const G_FORM_URL = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSdL0eLpcL1I9Hhu8FH7fds2jBIhRW2T_aRyE7tSnDA-_tAZpQ/formResponse";
-    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbzTFS1GCgUiPIWFBgLxTdv_zRPkDUlwSrka6Ja8Rj6gaOGm1Lwdpc5ZkVP20qBXtbsp/exec"; 
+    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyCUsVaXRW5oys2PbSt7Ae4_3VqBLP-nx3dF2zwKqmLolKHBZLmCvVESM8gjX4zgkXl/exec"; 
 
     let cloudRecords = [];
-    document.getElementById('startBalance').value = localStorage.getItem('cloud_start_amount') || 0;
 
     async function fetchCloudData() {
-        document.getElementById('syncStatus').innerText = "☁️ 正在抓取雲端資料...";
+        document.getElementById('syncStatus').innerText = "☁️ 讀取雲端餘額...";
         try {
             const response = await fetch(CLOUD_API_URL);
-            cloudRecords = await response.json();
+            const json = await response.json();
+            
+            // 從雲端載入起始金額
+            document.getElementById('startBalance').value = json.startBalance;
+            cloudRecords = json.records;
+            
             refreshUI();
-            document.getElementById('syncStatus').innerText = "✅ 已與雲端同步";
+            document.getElementById('syncStatus').innerText = "✅ 已同步弘達最新紀錄";
         } catch (e) {
             document.getElementById('syncStatus').innerText = "❌ 同步失敗";
         }
@@ -81,7 +84,7 @@
     function handleAdd(type) {
         const name = document.getElementById('itemName').value;
         const price = document.getElementById('itemPrice').value;
-        if (!name || !price) { alert("內容填完再按！"); return; }
+        if (!name || !price) { alert("內容填完再按啦！"); return; }
         const formData = new URLSearchParams();
         formData.append("entry.254688195", name);
         formData.append("entry.166850842", type);
@@ -90,40 +93,39 @@
             document.getElementById('itemName').value = '';
             document.getElementById('itemPrice').value = '';
             document.getElementById('syncStatus').innerText = "🚀 上傳中...";
-            setTimeout(fetchCloudData, 2000);
+            setTimeout(fetchCloudData, 1500);
         });
     }
 
     async function clearCloudData() {
-        if (confirm("確定要清空所有雲端紀錄嗎？")) {
-            document.getElementById('syncStatus').innerText = "🧹 正在清空雲端...";
+        if (confirm("卓恩，確定要「結算本週」嗎？\n這會把目前的錢設為下週起點，並清空明細喔！")) {
+            document.getElementById('syncStatus').innerText = "🧹 結算並轉入下週...";
             try {
-                // 發送 POST 請求觸發 App Script 的 doPost 功能
                 await fetch(CLOUD_API_URL, { method: "POST", mode: "no-cors" });
-                alert("已成功清空！");
+                alert("結算成功！");
                 location.reload(); 
             } catch (e) {
-                alert("清除失敗，請檢查設定");
+                alert("失敗，請檢查網址");
             }
         }
     }
 
     function refreshUI() {
         const startAmount = parseFloat(document.getElementById('startBalance').value) || 0;
-        localStorage.setItem('cloud_start_amount', startAmount);
         const listDiv = document.getElementById('historyList');
-        
-        let finalBalance = startAmount;
-        cloudRecords.forEach(r => {
-            const p = parseFloat(r.price) || 0;
-            if (r.type === '收入') finalBalance += p; else finalBalance -= p;
-        });
+        let currentTotal = startAmount;
 
         listDiv.innerHTML = cloudRecords.slice().reverse().map(r => {
             const p = parseFloat(r.price) || 0;
             return `<div class="item"><div><b>${r.name}</b><br><small>${r.time}</small></div><b style="color:${r.type==='收入'?'var(--income)':'var(--expense)'}">${r.type==='收入'?'+':'-'}$${p.toLocaleString()}</b></div>`;
         }).join('');
 
+        // 算出最終餘額
+        let finalBalance = startAmount;
+        cloudRecords.forEach(r => {
+            const p = parseFloat(r.price) || 0;
+            if (r.type === '收入') finalBalance += p; else finalBalance -= p;
+        });
         document.getElementById('currentBalance').innerText = `$ ${finalBalance.toLocaleString()}`;
     }
 
