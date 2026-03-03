@@ -3,31 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>錢包對帳監督系統</title>
+    <title>錢包對帳監督系統 v2.0</title>
     <style>
         :root { --primary: #4a90e2; --income: #2ecc71; --expense: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 450px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-        .header-msg { text-align: center; color: var(--expense); font-weight: bold; margin-bottom: 15px; font-size: 14px; border: 1px solid #ffcccc; padding: 8px; border-radius: 8px; background: #fff5f5; }
+        .header-msg { text-align: center; color: #666; font-weight: bold; margin-bottom: 15px; font-size: 13px; border: 1px solid #ddd; padding: 8px; border-radius: 8px; background: #fff; }
         .balance-board { background: #333; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .balance-amount { font-size: 32px; font-weight: bold; margin: 5px 0; color: #f1c40f; }
         .init-section { background: #eee; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
         .init-section input { width: 100px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; text-align: right; }
-        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; }
         .full-width { grid-column: span 2; }
         input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .editing { border: 2px solid var(--primary) !important; background: #eef6ff; }
         button { padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
         .btn-income { background: var(--income); }
         .btn-expense { background: var(--expense); }
-        .history { height: 250px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 10px; }
-        .item { display: flex; justify-content: space-between; padding: 10px 5px; border-bottom: 1px solid #f9f9f9; align-items: center; }
-        .amount-text { font-weight: bold; }
+        .history { height: 350px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 10px; }
+        .item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f9f9f9; align-items: center; cursor: pointer; }
+        .item:active { background-color: #f0f0f0; }
+        .time-text { font-size: 11px; color: #999; margin-top: 2px; }
+        .amount-text { font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .btn-delete { background: none; color: #ccc; font-size: 18px; padding: 10px; width: auto; }
+        .edit-hint { font-size: 10px; color: var(--primary); margin-bottom: 5px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header-msg">⚠️ 系統已連線：請誠實記錄，我隨時會檢查喔！</div>
+    <div class="header-msg">💡 提示：點擊下方紀錄即可「修改」內容</div>
 
     <div class="balance-board">
         <div style="font-size:14px; opacity:0.8;">錢包理論餘額</div>
@@ -40,13 +45,14 @@
     </div>
 
     <div class="input-group">
+        <div id="editLabel" class="full-width edit-hint">正在編輯模式...</div>
         <input type="text" id="itemName" class="full-width" placeholder="品項 (例如：晚餐)">
         <input type="number" id="itemPrice" class="full-width" placeholder="金額" inputmode="decimal">
-        <button class="btn-income" onclick="handleAdd('收入')">＋ 收入</button>
-        <button class="btn-expense" onclick="handleAdd('支出')">－ 支出</button>
+        <button class="btn-income" id="btnInc" onclick="handleAdd('收入')">＋ 收入</button>
+        <button class="btn-expense" id="btnExp" onclick="handleAdd('支出')">－ 支出</button>
     </div>
 
-    <div style="font-size:14px; font-weight:bold;">最近帳目 (同步中...)</div>
+    <div style="font-size:14px; font-weight:bold;">帳目清單</div>
     <div id="historyList" class="history"></div>
 </div>
 
@@ -58,35 +64,78 @@
 
     let records = JSON.parse(localStorage.getItem('my_wallet_data') || '[]');
     let startAmount = parseFloat(localStorage.getItem('my_wallet_start') || '0');
+    let editingId = null;
+
     document.getElementById('startBalance').value = startAmount;
     updateUI();
 
     function handleAdd(type) {
-        const name = document.getElementById('itemName').value;
-        const price = document.getElementById('itemPrice').value;
+        const nameField = document.getElementById('itemName');
+        const priceField = document.getElementById('itemPrice');
+        const name = nameField.value;
+        const price = priceField.value;
 
         if (!name || !price) { alert("內容填完再按啦！"); return; }
 
-        // 1. 同步到你的 Google 表單 (監督用)
+        // 同步到 Google 表單
         const formData = new URLSearchParams();
-        formData.append(ID_NAME, name);
+        formData.append(ID_NAME, editingId ? `(改) ${name}` : name);
         formData.append(ID_TYPE, type);
         formData.append(ID_PRICE, price);
 
-        fetch(G_FORM_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: formData
-        });
+        fetch(G_FORM_URL, { method: "POST", mode: "no-cors", body: formData });
 
-        // 2. 存在手機本地並更新畫面
-        const newRecord = { name, price: parseFloat(price), type, date: new Date().toLocaleTimeString() };
-        records.unshift(newRecord);
+        const now = new Date();
+        const timeString = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+        if (editingId) {
+            // 編輯現有紀錄
+            const index = records.findIndex(r => r.id === editingId);
+            records[index] = { ...records[index], name, price: parseFloat(price), type, time: timeString + " (已修改)" };
+            editingId = null;
+            exitEditMode();
+        } else {
+            // 新增紀錄
+            const newRecord = { id: Date.now(), name, price: parseFloat(price), type, time: timeString };
+            records.unshift(newRecord);
+        }
+
         localStorage.setItem('my_wallet_data', JSON.stringify(records));
-        
-        document.getElementById('itemName').value = '';
-        document.getElementById('itemPrice').value = '';
+        nameField.value = '';
+        priceField.value = '';
         updateUI();
+    }
+
+    function enterEditMode(id) {
+        const record = records.find(r => r.id === id);
+        if (!record) return;
+
+        editingId = id;
+        document.getElementById('itemName').value = record.name;
+        document.getElementById('itemPrice').value = record.price;
+        document.getElementById('itemName').classList.add('editing');
+        document.getElementById('itemPrice').classList.add('editing');
+        document.getElementById('editLabel').style.display = 'block';
+        document.getElementById('btnInc').innerText = "確認修改(收入)";
+        document.getElementById('btnExp').innerText = "確認修改(支出)";
+        window.scrollTo(0, 0); // 捲回頂部方便修改
+    }
+
+    function exitEditMode() {
+        document.getElementById('itemName').classList.remove('editing');
+        document.getElementById('itemPrice').classList.remove('editing');
+        document.getElementById('editLabel').style.display = 'none';
+        document.getElementById('btnInc').innerText = "＋ 收入";
+        document.getElementById('btnExp').innerText = "－ 支出";
+    }
+
+    function deleteRecord(e, id) {
+        e.stopPropagation(); // 防止觸發編輯
+        if(confirm("確定刪除？雲端表單仍會保留紀錄。")){
+            records = records.filter(r => r.id !== id);
+            localStorage.setItem('my_wallet_data', JSON.stringify(records));
+            updateUI();
+        }
     }
 
     function updateUI() {
@@ -101,15 +150,20 @@
             if (r.type === '收入') totalIncome += r.price;
             else totalExpense += r.price;
             return `
-                <div class="item">
-                    <span>${r.name} <small style="color:#999">(${r.type})</small></span>
-                    <span class="amount-text" style="color:${r.type==='收入'?'green':'red'}">
+                <div class="item" onclick="enterEditMode(${r.id})">
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight:500;">${r.name}</span>
+                        <span class="time-text">${r.time}</span>
+                    </div>
+                    <div class="amount-text" style="color:${r.type==='收入'?'var(--income)':'var(--expense)'}">
                         ${r.type==='收入'?'+':'-'}$${r.price}
-                    </span>
+                        <button class="btn-delete" onclick="deleteRecord(event, ${r.id})">×</button>
+                    </div>
                 </div>`;
         }).join('');
 
-        document.getElementById('currentBalance').innerText = `$ ${(startAmount + totalIncome - totalExpense).toLocaleString()}`;
+        const finalBalance = startAmount + totalIncome - totalExpense;
+        document.getElementById('currentBalance').innerText = `$ ${finalBalance.toLocaleString()}`;
     }
 </script>
 </body>
