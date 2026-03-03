@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小金庫</title>
+    <title>💑 小金庫</title>
     <link rel="manifest" href="manifest_shared.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
@@ -11,12 +11,11 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 450px; background: white; border-radius: 25px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
-        /* 餘額板 */
+        /* 修正後的餘額板：刪除重複行 */
         .balance-board { background: #333; color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
-        .balance-label { font-size: 13px; opacity: 0.7; letter-spacing: 1px; margin-bottom: 5px; }
-        .balance-amount { font-size: 36px; font-weight: 800; color: #f1c40f; margin-bottom: 15px; }
+        .balance-label { font-size: 14px; opacity: 0.8; letter-spacing: 1px; margin-bottom: 8px; }
+        .balance-amount { font-size: 38px; font-weight: 800; color: #f1c40f; margin-bottom: 18px; }
         
-        /* 國泰世華帳號卡片 */
         .bank-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); }
         .bank-info { font-size: 13px; font-family: monospace; color: #eee; }
         .copy-btn { background: #f1c40f; color: #333; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -42,7 +41,7 @@
     <div class="sync-status" id="syncStatus">☁️ 同步中...</div>
     
     <div class="balance-board">
-        <div class="balance-label">小金庫當前餘額</div>
+        <div class="balance-label">共用帳戶當前餘額</div>
         <div class="balance-amount" id="totalBalance">$ 0</div>
         
         <div class="bank-card">
@@ -52,7 +51,7 @@
     </div>
 
     <div class="input-group">
-        <input type="text" id="itemName" placeholder="項目 (如：公費存入)">
+        <input type="text" id="itemName" placeholder="項目 (如：房租、公費存入)">
         <input type="number" id="itemPrice" placeholder="金額" inputmode="decimal">
         <select id="payUser">
             <option value="蔡卓恩">操作人：蔡卓恩</option>
@@ -69,47 +68,4 @@
 </div>
 
 <script>
-    const G_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScv1RDI7TyPPuQb_QlB7_Rh2WEIP4q6-8AC6oOOIMZDm4it9A/formResponse";
-    // 卓恩，記得在這裡填入這份新試算表的 AppsScript 網址喔！
-    const CLOUD_API_URL = "這裡填入你的新AppsScript網址"; 
-    
-    const ID_NAME = "entry.693835429"; 
-    const ID_TYPE = "entry.1877176608";
-    const ID_PRICE = "entry.1236593110";
-    const ID_USER = "entry.1639575585";
-
-    async function fetchData() {
-        document.getElementById('syncStatus').innerText = "☁️ 同步中...";
-        try {
-            const res = await fetch(CLOUD_API_URL);
-            const data = await res.json();
-            let balance = 0;
-            document.getElementById('historyList').innerHTML = data.map(r => {
-                const p = parseFloat(r.price) || 0;
-                if (r.type === '收入') balance += p; else balance -= p;
-                return `<div class="item">
-                    <div>
-                        <b style="color:#333;">${r.name}</b> <span class="user-tag">${r.user}</span>
-                        <div style="font-size:10px; color:#999; margin-top:3px;">${r.time}</div>
-                    </div>
-                    <span style="font-weight:bold; font-size:16px; color:${r.type==='收入'?'var(--income)':'var(--expense)'}">
-                        ${r.type==='收入'?'+':'-'}$${p.toLocaleString()}
-                    </span>
-                </div>`;
-            }).join('');
-            document.getElementById('displayBalance').innerText = `$ ${balance.toLocaleString()}`; // 這裡修正 ID
-            document.getElementById('totalBalance').innerText = `$ ${balance.toLocaleString()}`;
-            document.getElementById('syncStatus').innerText = "✅ 已同步";
-        } catch(e) { document.getElementById('syncStatus').innerText = "❌ 連線失敗"; }
-    }
-
-    function submitData(type) {
-        const name = document.getElementById('itemName').value;
-        const price = document.getElementById('itemPrice').value;
-        const user = document.getElementById('payUser').value;
-        if(!name || !price) return;
-        const formData = new URLSearchParams();
-        formData.append(ID_NAME, name); formData.append(ID_PRICE, price);
-        formData.append(ID_USER, user); formData.append(ID_TYPE, type);
-        fetch(G_FORM_URL, { method: "POST", mode: "no-cors", body: formData }).then(() => {
-            document.
+    const G_FORM_URL = "
