@@ -4,37 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>小金庫</title>
-    <link rel="manifest" href="manifest_shared.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         :root { --shared: #9b59b6; --income: #2ecc71; --expense: #e74c3c; --bg: #fdfaf3; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 450px; background: white; border-radius: 25px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        
-        /* 修正後的餘額板：刪除重複行 */
         .balance-board { background: #333; color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
-        .balance-label { font-size: 14px; opacity: 0.8; letter-spacing: 1px; margin-bottom: 8px; }
         .balance-amount { font-size: 38px; font-weight: 800; color: #f1c40f; margin-bottom: 18px; }
-        
-        .bank-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); }
-        .bank-info { font-size: 13px; font-family: monospace; color: #eee; }
-        .copy-btn { background: #f1c40f; color: #333; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
-
+        .bank-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .copy-btn { background: #f1c40f; color: #333; border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .input-group { background: #f9f2ff; padding: 15px; border-radius: 18px; margin-bottom: 20px; }
         input, select { padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .action-btn { padding: 15px; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; color: white; }
+        .action-btn { padding: 15px; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; color: white; cursor: pointer; }
         .btn-inc { background: var(--income); box-shadow: 0 4px 0 #27ae60; }
         .btn-exp { background: var(--expense); box-shadow: 0 4px 0 #c0392b; }
-        .action-btn:active { transform: translateY(3px); box-shadow: none; }
-
-        /* 清除按鈕樣式 */
-        .btn-clear { width: 100%; padding: 12px; background: #ff4d4d; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; margin-bottom: 20px; cursor: pointer; }
-
-        .history { height: 320px; overflow-y: auto; margin-top: 10px; }
+        .btn-clear { width: 100%; padding: 15px; background: #ff4d4d; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin: 20px 0; cursor: pointer; box-shadow: 0 4px 0 #c0392b; }
+        .history { height: 320px; overflow-y: auto; }
         .item { display: flex; justify-content: space-between; padding: 15px 5px; border-bottom: 1px solid #eee; align-items: center; }
-        .user-tag { font-size: 11px; background: #9b59b6; color: white; padding: 2px 8px; border-radius: 20px; margin-left: 5px; }
+        .user-tag { font-size: 11px; background: #9b59b6; color: white; padding: 2px 8px; border-radius: 20px; }
         .sync-status { text-align: center; font-size: 10px; color: #bbb; margin-bottom: 8px; }
     </style>
 </head>
@@ -42,15 +29,13 @@
 
 <div class="container">
     <div class="sync-status" id="syncStatus">☁️ 同步中...</div>
-    <button class="btn-clear" onclick="clearData()" style="margin-bottom:10px;">🗑️ 一鍵清空紀錄</button>
     
     <div class="balance-board">
-        <div class="balance-label">共用帳戶當前餘額</div>
+        <div class="balance-label" style="font-size:14px; opacity:0.8;">共用帳戶當前餘額</div>
         <div class="balance-amount" id="totalBalance">$ 0</div>
-        
         <div class="bank-card">
-            <span class="bank-info">(013) 國泰 125506233868</span>
-            <button class="copy-btn" id="copyBtn" onclick="copyBankInfo()">複製</button>
+            <span style="font-size:12px;">(013) 國泰 125506233868</span>
+            <button class="copy-btn" onclick="copyBankInfo()">複製</button>
         </div>
     </div>
 
@@ -69,18 +54,14 @@
 
     <button class="btn-clear" onclick="clearData()">🗑️ 每週結算：一鍵清空紀錄</button>
 
-    <div style="font-size:14px; font-weight:bold; color: #555;">📊 最近明細</div>
+    <div style="font-size:14px; font-weight:bold; color: #555; margin-bottom:10px;">📊 最近明細</div>
     <div id="historyList" class="history"></div>
 </div>
 
 <script>
     const G_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScv1RDI7TyPPuQb_QlB7_Rh2WEIP4q6-8AC6oOOIMZDm4it9A/formResponse";
-    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycby_GQPUJw6ZkCKq7P3VUXKWI0niscWunEHSgS6pOJtdFcGO76MjuvG33oaEtWVMbrUP/exec"; 
-    
-    const ID_NAME = "entry.693835429"; 
-    const ID_TYPE = "entry.1877176608";
-    const ID_PRICE = "entry.1236593110";
-    const ID_USER = "entry.1639575585";
+    // ⚠️ 請確保這串網址是你「最新部署」的那一串
+    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyDGsVwlIkcaqLazOBfXYufbxusq2pbjF_tqeQnB-vqs-OCeCAZ27XnKxtIfGauVR3H/exec"; 
 
     async function fetchData() {
         document.getElementById('syncStatus').innerText = "☁️ 同步中...";
@@ -88,15 +69,15 @@
             const res = await fetch(CLOUD_API_URL);
             const data = await res.json();
             let balance = 0;
-            document.getElementById('historyList').innerHTML = data.map(r => {
+            document.getElementById('historyList').innerHTML = data.reverse().map(r => {
                 const p = parseFloat(r.price) || 0;
                 if (r.type === '收入') balance += p; else balance -= p;
                 return `<div class="item">
                     <div>
-                        <b style="color:#333;">${r.name}</b> <span class="user-tag">${r.user}</span>
-                        <div style="font-size:10px; color:#999; margin-top:3px;">${r.time}</div>
+                        <b>${r.name}</b> <span class="user-tag">${r.user}</span>
+                        <div style="font-size:10px; color:#999;">${r.time}</div>
                     </div>
-                    <span style="font-weight:bold; font-size:16px; color:${r.type==='收入'?'var(--income)':'var(--expense)'}">
+                    <span style="font-weight:bold; color:${r.type==='收入'?'#2ecc71':'#e74c3c'}">
                         ${r.type==='收入'?'+':'-'}$${p.toLocaleString()}
                     </span>
                 </div>`;
@@ -112,44 +93,31 @@
         const user = document.getElementById('payUser').value;
         if(!name || !price) return;
         const formData = new URLSearchParams();
-        formData.append(ID_NAME, name); formData.append(ID_PRICE, price);
-        formData.append(ID_USER, user); formData.append(ID_TYPE, type);
+        formData.append("entry.693835429", name);
+        formData.append("entry.1236593110", price);
+        formData.append("entry.1639575585", user);
+        formData.append("entry.1877176608", type);
         fetch(G_FORM_URL, { method: "POST", mode: "no-cors", body: formData }).then(() => {
             document.getElementById('itemName').value = '';
             document.getElementById('itemPrice').value = '';
-            setTimeout(fetchData, 2000);
+            setTimeout(fetchData, 1500);
         });
     }
 
-    // 清除按鈕的功能
     function clearData() {
-        if (confirm("卓恩，確定要清空本週所有紀錄嗎？(清空後無法找回喔！)")) {
-            document.getElementById('syncStatus').innerText = "🧹 正在清空...";
+        if (confirm("卓恩，確定要清空本週所有紀錄嗎？")) {
+            document.getElementById('syncStatus').innerText = "🧹 清理中...";
             fetch(CLOUD_API_URL, { method: "POST", mode: "no-cors" })
             .then(() => {
-                alert("清理成功！餘額即將歸零。");
-                setTimeout(fetchData, 1500);
-            })
-            .catch(e => alert("清理失敗：" + e));
+                alert("清理成功！");
+                location.reload();
+            }).catch(e => alert("錯誤：" + e));
         }
     }
 
     function copyBankInfo() {
-        const bankText = "國泰世華 (013) 125506233868";
-        navigator.clipboard.writeText(bankText).then(() => {
-            const btn = document.getElementById('copyBtn');
-            const originalText = btn.innerText;
-            btn.innerText = "OK!";
-            btn.style.background = "#2ecc71";
-            btn.style.color = "white";
-            setTimeout(() => { 
-                btn.innerText = originalText; 
-                btn.style.background = "#f1c40f";
-                btn.style.color = "#333";
-            }, 2000);
-        });
+        navigator.clipboard.writeText("國泰世華 (013) 125506233868").then(() => alert("已複製帳號"));
     }
-   
     fetchData();
 </script>
 </body>
