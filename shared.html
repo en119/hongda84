@@ -9,48 +9,112 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 450px; background: white; border-radius: 25px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .balance-board { background: #333; color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
-        .balance-amount { font-size: 38px; font-weight: 800; color: #f1c40f; margin-bottom: 18px; }
-        .btn-clear { width: 100%; padding: 15px; background: #ff4d4d; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; margin: 20px 0; cursor: pointer; box-shadow: 0 4px 0 #c0392b; }
+        .balance-amount { font-size: 38px; font-weight: 800; color: #f1c40f; }
+        .btn-clear { width: 100%; padding: 15px; background: #ff4d4d; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 0 #c0392b; }
         .btn-clear:active { transform: translateY(3px); box-shadow: none; }
-        .input-group { background: #f9f2ff; padding: 15px; border-radius: 18px; margin-bottom: 20px; }
-        input, select { padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .action-btn { padding: 15px; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; color: white; cursor: pointer; }
-        .btn-inc { background: var(--income); box-shadow: 0 4px 0 #27ae60; }
-        .btn-exp { background: var(--expense); box-shadow: 0 4px 0 #c0392b; }
-        .history { height: 320px; overflow-y: auto; margin-top: 10px; }
+        .history { height: 320px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #eee; }
         .item { display: flex; justify-content: space-between; padding: 15px 5px; border-bottom: 1px solid #eee; align-items: center; }
         .sync-status { text-align: center; font-size: 10px; color: #bbb; margin-bottom: 8px; }
     </style>
 </head>
 <body>
+
 <div class="container">
     <div class="sync-status" id="syncStatus">☁️ 同步中...</div>
+
+    <button class="btn-clear" onclick="clearData()">🗑️ 一鍵結算：清空紀錄</button>
+
     <div class="balance-board">
         <div style="font-size:14px; opacity:0.8;">共用帳戶當前餘額</div>
         <div class="balance-amount" id="totalBalance">$ 0</div>
     </div>
 
-    <div class="input-group">
-        <input type="text" id="itemName" placeholder="項目 (如：房租、公費存入)">
-        <input type="number" id="itemPrice" placeholder="金額" inputmode="decimal">
-        <select id="payUser">
-            <option value="蔡卓恩">操作人：蔡卓恩</option>
-            <option value="吳弘達">操作人：吳弘達</option>
-        </select>
-        <div class="btn-group">
-            <button class="action-btn btn-inc" onclick="submitData('收入')">＋ 存入</button>
-            <button class="action-btn btn-exp" onclick="submitData('支出')">－ 支出</button>
-        </div>
-    </div>
-
-    <button class="btn-clear" onclick="clearData()">🗑️ 每週結算：一鍵清空紀錄</button>
-
     <div style="font-size:14px; font-weight:bold; color: #555;">📊 最近明細</div>
     <div id="historyList" class="history"></div>
+    
+    <p style="text-align:center; font-size:12px; color:#999; margin-top:20px;">卓恩 & 弘達 專用</p>
 </div>
 
 <script>
+    // 你的 Google 腳本網址
+    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycby_GQPUJw6ZkCKq7P3VUXKWI0niscWunEHSgS6pOJtdFcGO76MjuvG33oaEtWVMbrUP/exec"; 
+
+    async function fetchData() {
+        try {
+            const res = await fetch(CLOUD_API_URL);
+            const data = await res.json();
+            let balance = 0;
+            if (data.length === 0) {
+                document.getElementById('historyList').innerHTML = '<p style="color:#ccc; text-align:center;">目前沒有紀錄</p>';
+            } else {
+                document.getElementById('historyList').innerHTML = data.reverse().map(r => {
+                    const p = parseFloat(r.price) || 0;
+                    if (r.type === '收入') balance += p; else balance -= p;
+                    return `<div class="item"><div><b>${r.name}</b><br><small>${r.time} (${r.user})</small></div><b style="color:${r.type==='收入'?'#2ecc71':'#e74c3c'}">${r.type==='收入'?'+':'-'}$${p}</b></div>`;
+                }).join('');
+            }
+            document.getElementById('totalBalance').innerText = `$ ${balance.toLocaleString()}`;
+            document.getElementById('syncStatus').innerText = "✅ 已同步";
+        } catch(e) { 
+            document.getElementById('syncStatus').innerText = "❌ 讀取失敗"; 
+            console.log(e);
+        }
+    }
+
+    function clearData() {
+        if (confirm("卓恩，確定要清空本週所有紀錄嗎？")) {
+            document.getElementById('syncStatus').innerText = "🧹 清理中...";
+            fetch(CLOUD_API_URL, { method: "POST", mode: "no-cors" })
+            .then(() => {
+                alert("清理成功！");
+                location.reload();
+            })
+            .catch(err => alert("失敗：" + err));
+        }
+    }
+
+    fetchData();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小金庫</title>
+    <style>
+        :root { --shared: #9b59b6; --income: #2ecc71; --expense: #e74c3c; --bg: #fdfaf3; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 450px; background: white; border-radius: 25px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .balance-board { background: #333; color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
+        .balance-amount { font-size: 38px; font-weight: 800; color: #f1c40f; }
+        .btn-clear { width: 100%; padding: 15px; background: #ff4d4d; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 0 #c0392b; }
+        .btn-clear:active { transform: translateY(3px); box-shadow: none; }
+        .history { height: 320px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #eee; }
+        .item { display: flex; justify-content: space-between; padding: 15px 5px; border-bottom: 1px solid #eee; align-items: center; }
+        .sync-status { text-align: center; font-size: 10px; color: #bbb; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sync-status" id="syncStatus">☁️ 同步中...</div>
+
+    <button class="btn-clear" onclick="clearData()">🗑️ 一鍵結算：清空紀錄</button>
+
+    <div class="balance-board">
+        <div style="font-size:14px; opacity:0.8;">共用帳戶當前餘額</div>
+        <div class="balance-amount" id="totalBalance">$ 0</div>
+    </div>
+
+    <div style="font-size:14px; font-weight:bold; color: #555;">📊 最近明細</div>
+    <div id="historyList" class="history"></div>
+    
+    <p style="text-align:center; font-size:12px; color:#999; margin-top:20px;">卓恩 & 弘達 專用</p>
+</div>
+
+<script>
+    // 你的 Google 腳本網址
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbzjVjPmwVeuDqyblNk1My_FJETgWsL42a7thWc_9HM0faIOlDyamGzM3M5VS8JHcb7v/exec"; 
 
     async function fetchData() {
@@ -58,25 +122,35 @@
             const res = await fetch(CLOUD_API_URL);
             const data = await res.json();
             let balance = 0;
-            document.getElementById('historyList').innerHTML = data.reverse().map(r => {
-                const p = parseFloat(r.price) || 0;
-                if (r.type === '收入') balance += p; else balance -= p;
-                return `<div class="item"><div><b>${r.name}</b><br><small>${r.time}</small></div><b style="color:${r.type==='收入'?'#2ecc71':'#e74c3c'}">${r.type==='收入'?'+':'-'}$${p}</b></div>`;
-            }).join('');
+            if (data.length === 0) {
+                document.getElementById('historyList').innerHTML = '<p style="color:#ccc; text-align:center;">目前沒有紀錄</p>';
+            } else {
+                document.getElementById('historyList').innerHTML = data.reverse().map(r => {
+                    const p = parseFloat(r.price) || 0;
+                    if (r.type === '收入') balance += p; else balance -= p;
+                    return `<div class="item"><div><b>${r.name}</b><br><small>${r.time} (${r.user})</small></div><b style="color:${r.type==='收入'?'#2ecc71':'#e74c3c'}">${r.type==='收入'?'+':'-'}$${p}</b></div>`;
+                }).join('');
+            }
             document.getElementById('totalBalance').innerText = `$ ${balance.toLocaleString()}`;
             document.getElementById('syncStatus').innerText = "✅ 已同步";
-        } catch(e) { document.getElementById('syncStatus').innerText = "❌ 讀取失敗"; }
+        } catch(e) { 
+            document.getElementById('syncStatus').innerText = "❌ 讀取失敗"; 
+            console.log(e);
+        }
     }
 
     function clearData() {
-        if (confirm("卓恩，確定要結算並清空紀錄嗎？")) {
+        if (confirm("卓恩，確定要清空本週所有紀錄嗎？")) {
             document.getElementById('syncStatus').innerText = "🧹 清理中...";
-            fetch(CLOUD_API_URL, { method: "POST", mode: "no-cors" }).then(() => {
+            fetch(CLOUD_API_URL, { method: "POST", mode: "no-cors" })
+            .then(() => {
                 alert("清理成功！");
                 location.reload();
-            });
+            })
+            .catch(err => alert("失敗：" + err));
         }
     }
+
     fetchData();
 </script>
 </body>
