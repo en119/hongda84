@@ -30,7 +30,20 @@
     <div class="sync-status" id="syncStatus">☁️ 雲端同步中...</div>
     <div class="balance-board">
         <div style="font-size:14px; opacity:0.8;">共用帳戶當前餘額</div>
+       <div class="balance-board">
+        <div style="font-size:14px; opacity:0.8;">共用帳戶當前餘額</div>
         <div class="balance-amount" id="totalBalance">$ 0</div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+            <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">共同帳戶轉帳資訊</div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <code id="bankInfo" style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 5px; font-size: 14px;">
+                    (013) 國泰世華 125506233868
+                </code>
+                <button onclick="copyBankInfo()" style="width: auto; padding: 5px 10px; font-size: 12px; background: #f1c40f; color: #333;">複製</button>
+            </div>
+        </div>
+    </div>
     </div>
 
     <div class="input-group">
@@ -108,6 +121,24 @@
             setTimeout(fetchData, 2000);
         });
     }
+    // 一鍵複製銀行帳號的功能
+function copyBankInfo() {
+    // 請在這裡修改成你們實際的銀行資訊
+    const bankText = "中國信託 (822) 帳號：123456789012"; 
+    
+    navigator.clipboard.writeText(bankText).then(() => {
+        alert("帳號已複製！可以去轉帳囉 💸");
+    }).catch(err => {
+        // 備用方案：如果手機瀏覽器不支援 clipboard API
+        const textArea = document.createElement("textarea");
+        textArea.value = bankText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        alert("帳號已複製！");
+    });
+}
     fetchData();
 </script>
 </body>
