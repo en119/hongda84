@@ -1,0 +1,16 @@
+{
+  "short_name": "我們的小金庫",
+  "name": "蔡卓恩與吳弘達的公帳",
+  "icons": [
+    {
+      "src": "S__3670026.jpg",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "shared.html",
+  "background_color": "#fdfaf3",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#9b59b6"
+}
