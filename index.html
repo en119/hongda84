@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端同步記帳本</title>
+    <title>雲端對帳監督系統</title>
     <style>
         :root { --primary: #4a90e2; --income: #2ecc71; --expense: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 450px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
         .balance-board { background: #333; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .balance-amount { font-size: 32px; font-weight: bold; margin: 5px 0; color: #f1c40f; }
+        .init-section { background: #eee; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .init-section input { width: 100px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; text-align: right; }
         .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; }
         .full-width { grid-column: span 2; }
         input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         button { padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; }
         .btn-income { background: var(--income); }
         .btn-expense { background: var(--expense); }
-        .history { height: 400px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 10px; }
+        .history { height: 350px; overflow-y: auto; border-top: 1px solid #eee; margin-top: 10px; }
         .item { display: flex; justify-content: space-between; padding: 12px 5px; border-bottom: 1px solid #f9f9f9; align-items: center; }
         .sync-status { text-align: center; font-size: 10px; color: #999; margin-bottom: 10px; }
     </style>
@@ -26,8 +28,16 @@
 <div class="container">
     <div class="sync-status" id="syncStatus">☁️ 雲端同步中...</div>
     <div class="balance-board">
-        <div style="font-size:14px; opacity:0.8;">雲端即時餘額</div>
+        <div style="font-size:14px; opacity:0.8;">錢包理論餘額 (應有金額)</div>
         <div class="balance-amount" id="currentBalance">$ 0</div>
+    </div>
+
+    <div class="init-section">
+        <span>本週起始金額：</span>
+        <div>
+            <input type="number" id="startBalance" value="0" onchange="refreshUI()" inputmode="decimal">
+            <span>元</span>
+        </div>
     </div>
 
     <div class="input-group">
@@ -38,26 +48,31 @@
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <strong style="font-size:14px;">雲端紀錄 (最近50筆)</strong>
+        <strong style="font-size:14px;">最近雲端紀錄</strong>
         <button onclick="fetchCloudData()" style="background:none; color:var(--primary); font-size:12px; width:auto; padding:0;">🔄 手動刷新</button>
     </div>
     <div id="historyList" class="history"></div>
 </div>
 
 <script>
-    // --- 填入你的資訊 ---
+    // 請填入你之前的資訊
     const G_FORM_URL = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSdL0eLpcL1I9Hhu8FH7fds2jBIhRW2T_aRyE7tSnDA-_tAZpQ/formResponse";
     const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyqSEziKVxmS9ey95LCZ4GNDKI6YYLpFbhBsUia2Ahm3PfvH8_ceMQBy68U-9FgqqWi/exec"; 
     const ID_NAME = "entry.254688195";
     const ID_TYPE = "entry.166850842";
     const ID_PRICE = "entry.2093753088";
 
+    let cloudRecords = [];
+
+    // 從本地讀取上次設定的初始金額
+    document.getElementById('startBalance').value = localStorage.getItem('cloud_start_amount') || 0;
+
     async function fetchCloudData() {
         document.getElementById('syncStatus').innerText = "☁️ 正在抓取雲端資料...";
         try {
             const response = await fetch(CLOUD_API_URL);
-            const data = await response.json();
-            updateUI(data);
+            cloudRecords = await response.json();
+            refreshUI();
             document.getElementById('syncStatus').innerText = "✅ 已與雲端同步";
         } catch (e) {
             document.getElementById('syncStatus').innerText = "❌ 同步失敗，請檢查網路";
@@ -78,19 +93,21 @@
         .then(() => {
             document.getElementById('itemName').value = '';
             document.getElementById('itemPrice').value = '';
-            // 延遲 2 秒再刷新，給 Google 試算表一點時間寫入
-            setTimeout(fetchCloudData, 2000);
+            setTimeout(fetchCloudData, 2000); // 2秒後自動刷新
         });
     }
 
-    function updateUI(records) {
-        const listDiv = document.getElementById('historyList');
-        let total = 0;
+    function refreshUI() {
+        const startAmount = parseFloat(document.getElementById('startBalance').value) || 0;
+        localStorage.setItem('cloud_start_amount', startAmount); // 存起來
 
-        listDiv.innerHTML = records.map(r => {
+        const listDiv = document.getElementById('historyList');
+        let currentTotal = startAmount;
+
+        listDiv.innerHTML = cloudRecords.map(r => {
             const p = parseFloat(r.price) || 0;
-            if (r.type === '收入') total += p;
-            else total -= p;
+            if (r.type === '收入') currentTotal += p;
+            else currentTotal -= p;
 
             return `
                 <div class="item">
@@ -104,7 +121,7 @@
                 </div>`;
         }).join('');
 
-        document.getElementById('currentBalance').innerText = `$ ${total.toLocaleString()}`;
+        document.getElementById('currentBalance').innerText = `$ ${currentTotal.toLocaleString()}`;
     }
 
     // 初始載入
