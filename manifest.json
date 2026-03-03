@@ -1,0 +1,16 @@
+{
+  "short_name": "記帳監督",
+  "name": "錢包對帳監督系統",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2343/2343515.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#f4f7f6",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#4a90e2"
+}
